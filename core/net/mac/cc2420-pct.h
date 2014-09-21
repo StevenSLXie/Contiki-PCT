@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
-void adjust_tx_power(uint8_t result, uint8_t *to);
-uint8_t get_adjusted_tx_power(uint8_t *to);
+void adjust_tx_power(uint8_t result, uint8_t to);
+uint8_t get_adjusted_tx_power(uint8_t to);
 
 #endif
 

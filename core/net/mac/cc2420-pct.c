@@ -29,11 +29,11 @@ typedef struct Neighbors{
 static Neighbors nodes[MAX_NUM_OF_NEIGHBORS];
 uint8_t cur_num_of_nodes = 0;
 
-uint8_t search_table(uint8_t *to){
+uint8_t search_table(uint8_t to){
 	uint8_t i;	
 
 	for(i=0;i<cur_num_of_nodes;i++){
-		if(nodes[i].u8_0==to[0] && nodes[i].u8_1==to[1]){
+		if(nodes[i].u8_0==to){
 			return i;		
 		}	
 	}
@@ -42,14 +42,14 @@ uint8_t search_table(uint8_t *to){
     nodes[cur_num_of_nodes].received = 0;
     nodes[cur_num_of_nodes].lost = 0;
     nodes[cur_num_of_nodes].txpower = CC2420_TXPOWER_MAX-1;  
-    nodes[cur_num_of_nodes].u8_0 = to[0];
-    nodes[cur_num_of_nodes].u8_1 = to[1];
+    nodes[cur_num_of_nodes].u8_0 = to;
+    //nodes[cur_num_of_nodes].u8_1 = to[1];
     cur_num_of_nodes++;
     return (cur_num_of_nodes-1);
 }
 
 
-void adjust_tx_power(uint8_t result, uint8_t *to){
+void adjust_tx_power(uint8_t result, uint8_t to){
 	uint8_t n;
     n = search_table(to);
 	//printf("the num of current nodes is: %u.\n",n);
@@ -82,16 +82,16 @@ void adjust_tx_power(uint8_t result, uint8_t *to){
 			}
 			break;
 	}
-    //printf("the observed value is: %u.\n",nodes[n].received);
+    printf("the observed value is: %u.\n",nodes[n].txpower);
     
 }
 
 
 
-uint8_t get_adjusted_tx_power(uint8_t *to){
+uint8_t get_adjusted_tx_power(uint8_t to){
 	uint8_t n;
 	n = search_table(to);
-	printf("txpower for %u.%u is now adjusted to %u\n", to[0],to[1],nodes[n].txpower);
+	//printf("txpower for %u.%u is now adjusted to %u\n", to[0],to[1],nodes[n].txpower);
     return nodes[n].txpower;		
 }
 

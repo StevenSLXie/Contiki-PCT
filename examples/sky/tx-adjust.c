@@ -53,65 +53,118 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "net/mac/cc2420-pct.h"
+
 PROCESS(radio_test_process, "Radio test");
 AUTOSTART_PROCESSES(&radio_test_process);
 
-#define ON  1
-#define OFF 0
 
 #define HEADER "RTST"
 #define PACKET_SIZE 20
 #define PORT 9345
 
+#define MAX_NEIGHBORS 3
+#define CYCLE 3
 
+static uint8_t u8_0[MAX_NEIGHBORS*CYCLE] = {0};
+static uint8_t node_ptr = 0;
+static uint8_t ID = 73;
 
-struct indicator {
-  int onoff;
-  int led;
-  clock_time_t interval;
-  int on_num;
-  struct etimer timer;
+struct pct_list{
+	uint8_t list[MAX_NEIGHBORS*CYCLE];
+    uint8_t sender_ID;
 };
-static struct etimer send_timer, recv_gap;
-static struct indicator recv, other, flash;
+
+static struct etimer send_timer, delete_timer;
+
 
 /*---------------------------------------------------------------------*/
-static void
-set(struct indicator *indicator, int onoff) {
-  if(indicator->onoff ^ onoff) {
-    indicator->onoff = onoff;
-    if(onoff) {
-      leds_on(indicator->led);
-    } else {
-      leds_off(indicator->led);
-    }
-  }
-  if(onoff) {
-    etimer_set(&indicator->timer, indicator->interval);
-    indicator-> on_num += 2;
-  }
-  else{
-    indicator-> on_num--;
-  }
+static uint8_t
+point_next(){
+	if(node_ptr < MAX_NEIGHBORS*CYCLE-1){
+		node_ptr++;
+		return node_ptr;
+	}
+    else
+		return 0;
+} 
+
+static uint8_t
+get_point(){
+	if (node_ptr == MAX_NEIGHBORS*CYCLE-1){
+		return 0;	
+	}
+	else
+		return (node_ptr+1);
 }
+
+
+
 /*---------------------------------------------------------------------------*/
 static void
 abc_recv(struct abc_conn *c)
 {
   /* packet received */
-  if(packetbuf_datalen() < PACKET_SIZE
-     || strncmp((char *)packetbuf_dataptr(), HEADER, sizeof(HEADER))) {
+  //if(packetbuf_datalen() < sizeof(uint8_t)*MAX_NEIGHBORS*CYCLE
+  //   || strncmp((char *)packetbuf_dataptr(), HEADER, sizeof(HEADER))) {
     /* invalid message */
-
+  if(0){
   } else {
     PROCESS_CONTEXT_BEGIN(&radio_test_process);
-    set(&recv, ON);
-    etimer_restart(&recv_gap);
-    set(&other, ((char *)packetbuf_dataptr())[sizeof(HEADER)] ? ON : OFF);
 
-    /* synchronize the sending to keep the nodes from sending
+
+	// Upon receiving a packet, do 2 things: 
+	// 1. check if my ID is on the message list.
+	// if yes: decrease the power for that node;
+    // if no:  increase the power for that node;
+    // 2. include the ID of the sender to my next packet
+
+    // first do the 1:
+    struct pct_list *rec_pac;
+	uint8_t i,flag=0;
+    rec_pac = packetbuf_dataptr();
+
+    printf("received incoming packet.\n The msg is:");
+    for(i=0;i<MAX_NEIGHBORS*CYCLE;i++)
+		printf("%u ",rec_pac->list[i]);
+	printf("\n");
+
+    for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
+		if(rec_pac->list[i]==ID){
+			adjust_tx_power(1,rec_pac->sender_ID);
+			flag = 1;
+			break;		
+		}	
+	}
+
+	if(0==flag){
+		adjust_tx_power(0,rec_pac->sender_ID);			
+	}
+
+    flag = 0;
+
+	// then do the 2:
+    // first change the local u8_0 list, then append it to the packet
+    u8_0[point_next()] = rec_pac->sender_ID;
+    printf("the sender ID is:%u.\n",rec_pac->sender_ID);
+
+    packetbuf_clear();
+    struct pct_list *send_pac;
+    send_pac = (struct pct_list *)packetbuf_dataptr();
+    packetbuf_set_datalen(sizeof(struct pct_list));
+
+    printf("The data prepared for sending is:");
+	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
+		send_pac->list[i] = u8_0[i];    
+		printf("%u ",send_pac->list[i]);
+	}
+	printf("\n");
+
+	send_pac->sender_ID = ID;
+    printf("the sender ID prepared is:%u.\n",send_pac->sender_ID);
+	
+	/* synchronize the sending to keep the nodes from sending
        simultaneously */
-
     etimer_set(&send_timer, CLOCK_SECOND);
     etimer_adjust(&send_timer, - (int) (CLOCK_SECOND >> 1));
     PROCESS_CONTEXT_END(&radio_test_process);
@@ -122,70 +175,29 @@ static struct abc_conn abc;
 /*---------------------------------------------------------------------*/
 PROCESS_THREAD(radio_test_process, ev, data)
 {
-  static uint8_t txpower;
   PROCESS_BEGIN();
-
-  txpower = CC2420_TXPOWER_MAX;
-
-  /* Initialize the indicators */
-  recv.onoff = other.onoff = flash.onoff = OFF;
-  recv.on_num = other.on_num = flash.on_num = 10;
-  recv.interval = other.interval = CLOCK_SECOND;
-  flash.interval = 1;
-  flash.led = LEDS_RED;
-  recv.led = LEDS_GREEN;
-  other.led = LEDS_BLUE;
 
   abc_open(&abc, PORT, &abc_call);
   etimer_set(&send_timer, CLOCK_SECOND);
-  etimer_set(&recv_gap,10*CLOCK_SECOND);
-  SENSORS_ACTIVATE(button_sensor);
+  etimer_set(&delete_timer,1.1*CLOCK_SECOND);
+
 
   while(1) {
     PROCESS_WAIT_EVENT();
     if (ev == PROCESS_EVENT_TIMER) {
       if(data == &send_timer) {
 		etimer_reset(&send_timer);
+		//packetbuf_set_datalen(sizeof(uint8_t)*MAX_NEIGHBORS*CYCLE);
 
-		/* send packet */
-		packetbuf_copyfrom(HEADER, sizeof(HEADER));
-		((char *)packetbuf_dataptr())[sizeof(HEADER)] = recv.onoff;
-		/* send arbitrary data to fill the packet size */
-		packetbuf_set_datalen(PACKET_SIZE);
-		set(&flash, ON);
 		abc_send(&abc);
+		printf("Sending a packet.\n");
 
-      } else if(data == &other.timer) {
-		set(&other, OFF);
-		//etimer_reset(&recv_gap);
-        if(other.on_num > 15 && txpower >2){
-	  		txpower -= 1;
-	   		other.on_num = 10;	
-            cc2420_set_txpower(txpower);
-	   		printf("txpower is now adjusted to %u\n", txpower);
+      } 
+	  else if(data == &delete_timer){
+	  	  u8_0[get_point()] = 0;
+		  etimer_reset(&delete_timer);
+	  }
 	}
-        
-
-      } else if(data == &recv.timer) {
-		set(&recv, OFF);
-	
-
-      } else if(data == &flash.timer) {
-		set(&flash, OFF);
-      } else if(data == &recv_gap){
-         if(txpower < CC2420_TXPOWER_MAX){
-	     txpower += 1;
-	     cc2420_set_txpower(txpower);
-             printf("txpower is now adjusted to %u\n", txpower);
-	}
-        etimer_reset(&recv_gap);
-        
-      }
-    
-    } else if(ev == sensors_event && data == &button_sensor) {
-      
-      
-    }
   }
   PROCESS_END();
 }

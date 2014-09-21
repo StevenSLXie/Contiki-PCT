@@ -68,7 +68,7 @@ AUTOSTART_PROCESSES(&radio_test_process);
 
 static uint8_t u8_0[MAX_NEIGHBORS*CYCLE] = {0};
 static uint8_t node_ptr = 0;
-static uint8_t ID = 73;
+static uint8_t ID = 41;
 
 struct pct_list{
 	uint8_t list[MAX_NEIGHBORS*CYCLE];
@@ -76,6 +76,9 @@ struct pct_list{
 };
 
 static struct etimer send_timer, delete_timer;
+static struct pct_list *rec_pac;
+static struct pct_list *send_pac;
+
 
 
 /*---------------------------------------------------------------------*/
@@ -120,7 +123,7 @@ abc_recv(struct abc_conn *c)
     // 2. include the ID of the sender to my next packet
 
     // first do the 1:
-    struct pct_list *rec_pac;
+   
 	uint8_t i,flag=0;
     rec_pac = packetbuf_dataptr();
 
@@ -148,20 +151,9 @@ abc_recv(struct abc_conn *c)
     u8_0[point_next()] = rec_pac->sender_ID;
     printf("the sender ID is:%u.\n",rec_pac->sender_ID);
 
-    packetbuf_clear();
-    struct pct_list *send_pac;
-    send_pac = (struct pct_list *)packetbuf_dataptr();
-    packetbuf_set_datalen(sizeof(struct pct_list));
+    
 
-    printf("The data prepared for sending is:");
-	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
-		send_pac->list[i] = u8_0[i];    
-		printf("%u ",send_pac->list[i]);
-	}
-	printf("\n");
-
-	send_pac->sender_ID = ID;
-    printf("the sender ID prepared is:%u.\n",send_pac->sender_ID);
+	
 	
 	/* synchronize the sending to keep the nodes from sending
        simultaneously */
@@ -181,14 +173,28 @@ PROCESS_THREAD(radio_test_process, ev, data)
   etimer_set(&send_timer, CLOCK_SECOND);
   etimer_set(&delete_timer,1.1*CLOCK_SECOND);
 
-
+  uint8_t i;
   while(1) {
     PROCESS_WAIT_EVENT();
     if (ev == PROCESS_EVENT_TIMER) {
       if(data == &send_timer) {
 		etimer_reset(&send_timer);
-		//packetbuf_set_datalen(sizeof(uint8_t)*MAX_NEIGHBORS*CYCLE);
 
+		packetbuf_clear();
+    	send_pac = (struct pct_list *)packetbuf_dataptr();
+    	packetbuf_set_datalen(sizeof(struct pct_list));
+
+    	printf("The data prepared for sending is:");
+		for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
+			send_pac->list[i] = u8_0[i];    
+			printf("%u ",send_pac->list[i]);
+		}
+		printf("\n");
+
+		send_pac->sender_ID = ID;
+    	printf("the sender ID prepared is:%u.\n",send_pac->sender_ID);
+
+		cc2420_set_txpower((uint8_t)(get_adjusted_tx_power(rec_pac->sender_ID)));
 		abc_send(&abc);
 		printf("Sending a packet.\n");
 

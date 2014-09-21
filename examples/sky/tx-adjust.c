@@ -68,11 +68,15 @@ AUTOSTART_PROCESSES(&radio_test_process);
 
 static uint8_t u8_0[MAX_NEIGHBORS*CYCLE] = {0};
 static uint8_t node_ptr = 0;
-static uint8_t ID = 41;
+static uint8_t ID = 43;
+static uint8_t other1_ID = 41;
+static uint8_t other2_ID = 42;
+static uint8_t split = 0;
 
 struct pct_list{
 	uint8_t list[MAX_NEIGHBORS*CYCLE];
     uint8_t sender_ID;
+    uint8_t recv_ID;
 };
 
 static struct etimer send_timer, delete_timer;
@@ -127,32 +131,37 @@ abc_recv(struct abc_conn *c)
 	uint8_t i,flag=0;
     rec_pac = packetbuf_dataptr();
 
-    printf("received incoming packet.\n The msg is:");
-    for(i=0;i<MAX_NEIGHBORS*CYCLE;i++)
-		printf("%u ",rec_pac->list[i]);
-	printf("\n");
+	if(rec_pac->recv_ID == ID){
 
-    for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
-		if(rec_pac->list[i]==ID){
-			adjust_tx_power(1,rec_pac->sender_ID);
-			flag = 1;
-			break;		
-		}	
-	}
+    	printf("received incoming packet.\n The msg is:");
+    	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++)
+			printf("%u ",rec_pac->list[i]);
+		printf("\n");
 
-	if(0==flag){
-		adjust_tx_power(0,rec_pac->sender_ID);			
-	}
+	
 
-    flag = 0;
+    	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
+			if(rec_pac->list[i]==ID){
+				adjust_tx_power(1,rec_pac->sender_ID);
+				flag = 1;
+				break;		
+			}	
+		}
 
-	// then do the 2:
-    // first change the local u8_0 list, then append it to the packet
-    u8_0[point_next()] = rec_pac->sender_ID;
-    printf("the sender ID is:%u.\n",rec_pac->sender_ID);
+		if(0==flag){
+			adjust_tx_power(0,rec_pac->sender_ID);			
+		}
+
+    	flag = 0;
+
+		// then do the 2:
+    	// first change the local u8_0 list, then append it to the packet
+
+    	u8_0[point_next()] = rec_pac->sender_ID;
+    	printf("the sender ID is:%u.\n",rec_pac->sender_ID);
 
     
-
+	}
 	
 	
 	/* synchronize the sending to keep the nodes from sending
@@ -192,7 +201,14 @@ PROCESS_THREAD(radio_test_process, ev, data)
 		printf("\n");
 
 		send_pac->sender_ID = ID;
-    	printf("the sender ID prepared is:%u.\n",send_pac->sender_ID);
+		if(0==split){
+			send_pac->recv_ID = other1_ID;	
+			split = 1;
+		}else{
+			send_pac->recv_ID = other2_ID;
+			split = 2;
+		}
+    	//printf("the sender ID prepared is:%u.\n",send_pac->sender_ID);
 
 		cc2420_set_txpower((uint8_t)(get_adjusted_tx_power(rec_pac->sender_ID)));
 		abc_send(&abc);

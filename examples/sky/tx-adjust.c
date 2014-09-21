@@ -52,6 +52,13 @@
 PROCESS(power_adjust_process, "TX Power Adjustment");
 AUTOSTART_PROCESSES(&power_adjust_process);
 
+#define DEBUG 0
+#if DEBUG
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...) do {} while (0)
+#endif
+
 
 #define HEADER "RTST"
 #define PACKET_SIZE 20
@@ -62,7 +69,6 @@ AUTOSTART_PROCESSES(&power_adjust_process);
 
 static uint8_t u8_0[MAX_NEIGHBORS*CYCLE] = {0};
 static uint8_t head_ptr = 0;
-static uint8_t split = 0;
 static uint8_t ID = 1;
 static uint8_t dest[MAX_NEIGHBORS-1] = {2,3};
 static uint8_t node_ptr = 0;
@@ -111,10 +117,10 @@ recv(struct unicast_conn *c, const rimeaddr_t *from)
 
 	if(1){
 
-    	printf("received incoming packet.\n The msg is:");
+    	PRINTF("received incoming packet.\n The msg is:");
     	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++)
-			printf("%u ",rec_pac->list[i]);
-		printf("\n");
+			PRINTF("%u ",rec_pac->list[i]);
+		PRINTF("\n");
 
 
     	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
@@ -132,7 +138,7 @@ recv(struct unicast_conn *c, const rimeaddr_t *from)
     	// first change the local u8_0 list, then append it to the packet
 
     	u8_0[get_next(&head_ptr)] = from->u8[0];
-    	printf("the sender ID is:%u.\n",from->u8[0]);
+    	PRINTF("the sender ID is:%u.\n",from->u8[0]);
 
     
 	}		
@@ -141,6 +147,7 @@ recv(struct unicast_conn *c, const rimeaddr_t *from)
     //etimer_set(&send_timer, CLOCK_SECOND);
     //etimer_adjust(&send_timer, - (int) (CLOCK_SECOND >> 3));
     //PROCESS_CONTEXT_END(&radio_test_process);
+	
   }
 }
 static const struct unicast_callbacks recv_call = {recv};
@@ -157,6 +164,7 @@ PROCESS_THREAD(power_adjust_process, ev, data)
 
   etimer_set(&send_timer, CLOCK_SECOND);
   etimer_set(&delete_timer, CLOCK_SECOND);
+  //etimer_set(&no_res_timer,50*CLOCK_SECOND);
 
   rimeaddr_t my_addr;
  
@@ -172,18 +180,18 @@ PROCESS_THREAD(power_adjust_process, ev, data)
     PROCESS_WAIT_EVENT();
     if (ev == PROCESS_EVENT_TIMER) {
       if(data == &send_timer) {
-		etimer_set(&send_timer,CLOCK_SECOND);
+		etimer_set(&send_timer,5*CLOCK_SECOND);
 
 		packetbuf_clear();
     	send_pac = (struct pct_list *)packetbuf_dataptr();
     	packetbuf_set_datalen(sizeof(struct pct_list));
 
-    	printf("The data prepared for sending is:");
+    	PRINTF("The data prepared for sending is:");
 		for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
 			send_pac->list[i] = u8_0[i];    
-			printf("%u ",send_pac->list[i]);
+			PRINTF("%u ",send_pac->list[i]);
 		}
-		printf("\n");
+		PRINTF("\n");
 
 		node_ptr++;
 
@@ -205,10 +213,21 @@ PROCESS_THREAD(power_adjust_process, ev, data)
 
       } 
 	  else if(data == &delete_timer){
-		  printf("delete an old entry.\n");
-	  	  u8_0[get_next(&head_ptr)] = 0;
+		  PRINTF("delete an old entry.\n");
+          u8_0[get_next(&head_ptr)] = 0;
+		  uint8_t sum = 0;
+		  for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
+			sum += u8_0[i];    
+		  }
+		  if(0 == sum){
+			  printf("NO RESPONSE.");
+		  	  for(i=0;i<MAX_NEIGHBORS-1;i++)
+		      	adjust_tx_power(0,dest[i]);
+          }
+	  	  
 		  etimer_reset(&delete_timer);
 	  }
+	
 	}
   }
   PROCESS_END();

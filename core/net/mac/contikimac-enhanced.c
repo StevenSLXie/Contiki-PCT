@@ -52,6 +52,7 @@
 #include "sys/rtimer.h"
 
 #include "net/mac/cc2420-pct.h"
+#include "dev/cc2420.h"
 
 
 #include <string.h>
@@ -768,6 +769,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
       int ret;
 
       txtime = RTIMER_NOW();
+
+	  //cc2420_set_txpower((uint8_t)(get_adjusted_tx_power(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8)));
+
+	  
       ret = NETSTACK_RADIO.transmit(transmit_len);
 
 #if RDC_CONF_HARDWARE_ACK
@@ -789,6 +794,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
 #else /* RDC_CONF_HARDWARE_ACK */
      /* Wait for the ACK packet */
       wt = RTIMER_NOW();
+    
       while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + INTER_PACKET_INTERVAL)) { }
 
       if(!is_broadcast && (NETSTACK_RADIO.receiving_packet() ||
@@ -799,6 +805,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
         while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + AFTER_ACK_DETECTECT_WAIT_TIME)) { }
 
         len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
+
 		
         if(len == ACK_LEN && seqno == ackbuf[ACK_LEN - 1]) {
           got_strobe_ack = 1;
@@ -851,18 +858,17 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr,
   }
 
   // the PCT code
-  //printf("The state is now: %d.\n",ret);
+  /*
   if(MAC_TX_NOACK==ret){
-  	adjust_tx_power(0);
-    //printf("no ACK!\n");
+  	adjust_tx_power(0,packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8);
+    printf("no ACK!\n");
   }
-  else{
-	adjust_tx_power(1);
-	//printf("Otherwise!\n");
+  else if(MAC_TX_OK==ret){
+	adjust_tx_power(1,packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8);
+	printf("Otherwise!\n");
   }
-  //printf("is it broadcast: %u.\n",is_broadcast);
-  //printf("is ACK received: %u.\n",got_strobe_ack);
-  //printf("is it collision: %u.\n",collisions);
+  */
+
 
 #if WITH_PHASE_OPTIMIZATION
   if(is_known_receiver && got_strobe_ack) {

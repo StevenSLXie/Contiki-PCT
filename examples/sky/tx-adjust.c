@@ -63,6 +63,8 @@ AUTOSTART_PROCESSES(&radio_test_process);
 #define PACKET_SIZE 20
 #define PORT 9345
 
+
+
 struct indicator {
   int onoff;
   int led;
@@ -143,33 +145,33 @@ PROCESS_THREAD(radio_test_process, ev, data)
     PROCESS_WAIT_EVENT();
     if (ev == PROCESS_EVENT_TIMER) {
       if(data == &send_timer) {
-	etimer_reset(&send_timer);
+		etimer_reset(&send_timer);
 
-	/* send packet */
-	packetbuf_copyfrom(HEADER, sizeof(HEADER));
-	((char *)packetbuf_dataptr())[sizeof(HEADER)] = recv.onoff;
-	/* send arbitrary data to fill the packet size */
-	packetbuf_set_datalen(PACKET_SIZE);
-	set(&flash, ON);
-	abc_send(&abc);
+		/* send packet */
+		packetbuf_copyfrom(HEADER, sizeof(HEADER));
+		((char *)packetbuf_dataptr())[sizeof(HEADER)] = recv.onoff;
+		/* send arbitrary data to fill the packet size */
+		packetbuf_set_datalen(PACKET_SIZE);
+		set(&flash, ON);
+		abc_send(&abc);
 
       } else if(data == &other.timer) {
-	set(&other, OFF);
-	//etimer_reset(&recv_gap);
+		set(&other, OFF);
+		//etimer_reset(&recv_gap);
         if(other.on_num > 15 && txpower >2){
-	   txpower -= 1;
-	   other.on_num = 10;	
-           cc2420_set_txpower(txpower);
-	   printf("txpower is now adjusted to %u\n", txpower);
+	  		txpower -= 1;
+	   		other.on_num = 10;	
+            cc2420_set_txpower(txpower);
+	   		printf("txpower is now adjusted to %u\n", txpower);
 	}
         
 
       } else if(data == &recv.timer) {
-	set(&recv, OFF);
+		set(&recv, OFF);
 	
 
       } else if(data == &flash.timer) {
-	set(&flash, OFF);
+		set(&flash, OFF);
       } else if(data == &recv_gap){
          if(txpower < CC2420_TXPOWER_MAX){
 	     txpower += 1;

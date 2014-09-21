@@ -48,8 +48,8 @@
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
 
-#define MAX_RETRANSMISSIONS 4
-#define NUM_HISTORY_ENTRIES 4
+#define MAX_RETRANSMISSIONS 3
+#define NUM_HISTORY_ENTRIES 0
 
 /*---------------------------------------------------------------------------*/
 PROCESS(test_runicast_process, "runicast test");
@@ -76,7 +76,7 @@ recv_runicast(struct runicast_conn *c, const rimeaddr_t *from, uint8_t seqno)
       break;
     }
   }
-  if(e == NULL) {
+  if(e == NULL) {  // e == NULL
     /* Create new history entry */
     e = memb_alloc(&history_mem);
     if(e == NULL) {
@@ -128,11 +128,20 @@ PROCESS_THREAD(test_runicast_process, ev, data)
   list_init(history_table);
   memb_init(&history_mem);
 
+  //rimeaddr_t self;
+  //self.u8[0] = 2;
+  //self.u8[1] = 2;
+  
+  //rimeaddr_set_node_addr(&self);
+
   /* Receiver node: do nothing */
-  if(rimeaddr_node_addr.u8[0] == 1 &&
-     rimeaddr_node_addr.u8[1] == 0) {
-    PROCESS_WAIT_EVENT_UNTIL(0);
-  }
+  //if(rimeaddr_node_addr.u8[0] == 254 &&
+  //   rimeaddr_node_addr.u8[1] == 25) {
+  //  PROCESS_WAIT_EVENT_UNTIL(0);
+  //}
+
+  static uint8_t split = 0;
+
 
   while(1) {
     static struct etimer et;
@@ -144,8 +153,16 @@ PROCESS_THREAD(test_runicast_process, ev, data)
       rimeaddr_t recv;
 
       packetbuf_copyfrom("Hello", 5);
-      recv.u8[0] = 254;
-      recv.u8[1] = 25;
+
+	  if(0==split){
+     	 recv.u8[0] = 254;
+     	 recv.u8[1] = 25;
+  		 split = 1;
+	  }else{
+	  	 recv.u8[0] = 113;
+       	 recv.u8[1] = 240;
+  	     split = 0;
+      }     
 
       printf("%u.%u: sending runicast to address %u.%u\n",
 	     rimeaddr_node_addr.u8[0],

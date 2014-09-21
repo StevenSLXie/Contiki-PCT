@@ -7,7 +7,7 @@
 #include PLATFORM_CONF_H
 #else
 #include "platform-conf.h"
-#endif /* PLATFORM_CONF_H */
+#endif /* PLATFORM_CONF_H */ 
 
 #ifndef NETSTACK_CONF_MAC
 #define NETSTACK_CONF_MAC     csma_driver
@@ -30,7 +30,7 @@
 #endif /* NETSTACK_CONF_FRAMER */
 
 #ifndef CC2420_CONF_AUTOACK
-#define CC2420_CONF_AUTOACK              1
+#define CC2420_CONF_AUTOACK              0
 #endif /* CC2420_CONF_AUTOACK */
 
 /* Specify whether the RDC layer should enable

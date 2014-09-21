@@ -52,6 +52,8 @@
 
 #include "sys/timetable.h"
 
+#include "net/mac/cc2420-pct.h"
+
 #define WITH_SEND_CCA 1
 
 #define FOOTER_LEN 2
@@ -351,13 +353,21 @@ cc2420_transmit(unsigned short payload_len)
   GET_LOCK();
 
   
-  //txpower = 0;
+  txpower = 0;
   //if(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER) > 0) {
     /* Remember the current transmission power */
-  //  txpower = cc2420_get_txpower();
+  txpower = cc2420_get_txpower();
     /* Set the specified transmission power */
-  //  set_txpower(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER) - 1);
+    //set_txpower(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER) - 1);
   //}
+
+
+  // here insert how we apply the power control technique
+  //txpower = cc2420_get_txpower();
+  //txpower = get_adjusted_tx_power(packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8);
+  //set_txpower((uint8_t)txpower);
+
+  //printf("the power level is %d.\n",cc2420_get_txpower());
   
 
   total_len = payload_len + AUX_LEN;

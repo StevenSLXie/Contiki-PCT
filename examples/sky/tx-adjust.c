@@ -68,23 +68,17 @@ AUTOSTART_PROCESSES(&radio_test_process);
 
 static uint8_t u8_0[MAX_NEIGHBORS*CYCLE] = {0};
 static uint8_t head_ptr = 0;
-static uint8_t tail_ptr = 0;
-//static uint8_t ID = 43;
-//static uint8_t other1_ID = 41;
-//static uint8_t other2_ID = 42;
 static uint8_t split = 0;
 
 struct pct_list{
 	uint8_t list[MAX_NEIGHBORS*CYCLE];
-    uint8_t sender_ID;
-    uint8_t recv_ID;
+    //uint8_t sender_ID;
+    //uint8_t recv_ID;
 };
 
 static struct etimer send_timer, delete_timer;
 static struct pct_list *rec_pac;
 static struct pct_list *send_pac;
-
-
 
 /*---------------------------------------------------------------------*/
 static uint8_t
@@ -101,31 +95,15 @@ get_next(uint8_t *pos){
 	return *pos;
 } 
 
-/*
-static uint8_t
-tail_next(){
-	if (node_ptr == MAX_NEIGHBORS*CYCLE-1){
-		return 0;	
-	}
-	else
-		return (node_ptr+1);
-}
-*/
-
-
 
 /*---------------------------------------------------------------------------*/
 static void
 abc_recv(struct unicast_conn *c, const rimeaddr_t *from)
 {
-  /* packet received */
-  //if(packetbuf_datalen() < sizeof(uint8_t)*MAX_NEIGHBORS*CYCLE
-  //   || strncmp((char *)packetbuf_dataptr(), HEADER, sizeof(HEADER))) {
-    /* invalid message */
-  if(0){
-  } else {
-    //PROCESS_CONTEXT_BEGIN(&radio_test_process);
 
+  if(0){
+	// invalid messgae.
+  } else {
 
 	// Upon receiving a packet, do 2 things: 
 	// 1. check if my ID is on the message list.
@@ -138,7 +116,7 @@ abc_recv(struct unicast_conn *c, const rimeaddr_t *from)
 	uint8_t i,flag=0;
     rec_pac = packetbuf_dataptr();
 
-	if(rec_pac->recv_ID == rimeaddr_node_addr.u8[0]){
+	if(1){
 
     	printf("received incoming packet.\n The msg is:");
     	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++)
@@ -148,23 +126,20 @@ abc_recv(struct unicast_conn *c, const rimeaddr_t *from)
 
     	for(i=0;i<MAX_NEIGHBORS*CYCLE;i++){
 			if(rec_pac->list[i]==rimeaddr_node_addr.u8[0]){
-				adjust_tx_power(1,rec_pac->sender_ID);
 				flag = 1;
 				break;		
 			}	
 		}
 
-		if(0==flag){
-			adjust_tx_power(0,rec_pac->sender_ID);			
-		}
+		adjust_tx_power(flag,from->u8[0]);	
 
     	flag = 0;
 
 		// then do the 2:
     	// first change the local u8_0 list, then append it to the packet
 
-    	u8_0[get_next(&head_ptr)] = rec_pac->sender_ID;
-    	printf("the sender ID is:%u.\n",rec_pac->sender_ID);
+    	u8_0[get_next(&head_ptr)] = from->u8[0];
+    	printf("the sender ID is:%u.\n",from->u8[0]);
 
     
 	}		
@@ -220,23 +195,23 @@ PROCESS_THREAD(radio_test_process, ev, data)
 		}
 		printf("\n");
 
-		send_pac->sender_ID = rimeaddr_node_addr.u8[0];
+		//send_pac->sender_ID = rimeaddr_node_addr.u8[0];
 
 		if(0==split){
-            to_addr.u8[0] = 1;
-            to_addr.u8[1] = 0;
-			send_pac->recv_ID = to_addr.u8[0];	
-			split = 1;
-		}else{
             to_addr.u8[0] = 3;
             to_addr.u8[1] = 0;
-			send_pac->recv_ID = to_addr.u8[0];
+			//send_pac->recv_ID = to_addr.u8[0];	
+			split = 1;
+		}else{
+            to_addr.u8[0] = 2;
+            to_addr.u8[1] = 0;
+			//send_pac->recv_ID = to_addr.u8[0];
 			split = 0;
 		}
     	//printf("the sender ID prepared is:%u.\n",send_pac->sender_ID);
 
-		cc2420_set_txpower((uint8_t)(get_adjusted_tx_power(rec_pac->sender_ID)));
-		//abc_send(&abc);
+		cc2420_set_txpower((uint8_t)(get_adjusted_tx_power(to_addr.u8[0])));
+
 		if(!rimeaddr_cmp(&to_addr, &rimeaddr_node_addr)) {
       		unicast_send(&abc, &to_addr);
     	}

@@ -1,19 +1,12 @@
-The Contiki Operating System
+Power Control Algorithms based on Contiki 2.7
 ============================
 
-[![Build Status](https://secure.travis-ci.org/contiki-os/contiki.png)](http://travis-ci.org/contiki-os/contiki)
 
-Contiki is an open source operating system that runs on tiny low-power
-microcontrollers and makes it possible to develop applications that
-make efficient use of the hardware while providing standardized
-low-power wireless communication for a range of hardware platforms.
+This repository implements several power control techniques for WPAN based on Contiki 2.7. The code resides in /examples/sky/tx-adjust.c. Each node runs the tx-adjust program and it can automatically adjust the TX power to the optimum. It can be used for networks with different topologies such as star, mesh, P2P.
 
-Contiki is used in numerous commercial and non-commercial systems,
-such as city sound monitoring, street lights, networked electrical
-power meters, industrial monitoring, radiation monitoring,
-construction site monitoring, alarm systems, remote house monitoring,
-and so on.
+To run the program:
 
-For more information, see the Contiki website:
+cd /examples/sky
+make TARGET=sky tx-adjust
+make tx-adjust.upload
 
-[http://contiki-os.org](http://contiki-os.org)
